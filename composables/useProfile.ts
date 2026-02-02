@@ -2,7 +2,7 @@ import type { Database } from '@/types/database.types'
 
 export const useProfile = () => {
     const client = useSupabaseClient<Database>()
-    const { userId } = useAuthUser()
+    const userId = useState<string | null>('userId')
 
     // Fetch specific profile by Identifier (ID or Username if we added that logic later)
     const fetchProfile = async (id: string) => {

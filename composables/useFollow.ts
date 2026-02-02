@@ -2,7 +2,7 @@ import type { Database } from '@/types/database.types'
 
 export const useFollow = () => {
     const client = useSupabaseClient<Database>()
-    const { userId } = useAuthUser()
+    const userId = useState<string | null>('userId')
 
     const isFollowing = async (targetUserId: string) => {
         if (!userId.value) return false

@@ -55,8 +55,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
-
+// Global middleware handles auth protection
 const router = useRouter()
 const { createPost, uploadImage } = usePosts()
 

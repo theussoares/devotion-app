@@ -2,7 +2,7 @@ import type { Database } from '@/types/database.types'
 
 export const usePosts = () => {
     const client = useSupabaseClient<Database>()
-    const { userId } = useAuthUser()
+    const userId = useState<string | null>('userId')
 
     const createPost = async (content: {
         caption: string,

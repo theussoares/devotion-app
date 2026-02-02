@@ -61,7 +61,7 @@
 
 <script setup lang="ts">
 const client = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useState<string | null>('userId')
 
 const filter = ref<'global' | 'city'>('global')
 const currentUserCity = ref('')
@@ -69,8 +69,8 @@ const profiles = ref<any[]>([])
 
 // Get current user city for filtering
 onMounted(async () => {
-  if (user.value) {
-    const { data } = await client.from('profiles').select('city').eq('id', user.value.id).single()
+  if (userId.value) {
+    const { data } = await client.from('profiles').select('city').eq('id', userId.value).single()
     if (data) currentUserCity.value = data.city || ''
   }
 })

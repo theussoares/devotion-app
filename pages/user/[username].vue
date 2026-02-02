@@ -3,7 +3,7 @@
     <div class="navbar bg-base-100 shadow-sm">
       <div class="flex-none">
         <button class="btn btn-square btn-ghost" @click="router.back()">
-          <arrow-left-icon class="w-6 h-6" />
+          <Icon name="lucide:arrow-left" class="w-6 h-6" />
         </button>
       </div>
       <div class="flex-1">
@@ -45,28 +45,63 @@
       </div>
     </div>
 
+    <!-- Tabs -->
+    <div class="flex border-b border-gray-800 mb-6">
+        <button 
+          class="flex-1 pb-3 text-sm font-bold transition-colors"
+          :class="activeTab === 'timeline' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 border-b-2 border-transparent hover:text-gray-300'"
+          @click="activeTab = 'timeline'"
+        >
+          Timeline
+        </button>
+        <button 
+          class="flex-1 pb-3 text-sm font-medium transition-colors"
+          :class="activeTab === 'devotional' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 border-b-2 border-transparent hover:text-gray-300'"
+          @click="activeTab = 'devotional'"
+        >
+          Devocional
+        </button>
+        <button 
+          class="flex-1 pb-3 text-sm font-medium text-gray-400 cursor-not-allowed"
+          title="Em breve"
+        >
+          Curtidos 🔒
+        </button>
+    </div>
+
+    <!-- Timeline View -->
+    <div v-if="activeTab === 'timeline'" class="flex flex-col gap-0 border-t border-gray-800">
+         <div v-if="posts && posts.length > 0">
+             <PostCard v-for="post in posts" :key="post.id" :post="post" />
+         </div>
+         <div v-else class="text-center py-10 opacity-50 text-sm">
+             Nenhuma publicação ainda.
+         </div>
+    </div>
+
     <!-- Calendar View -->
-    <div class="px-4">
-        <h3 class="font-bold text-lg mb-2">Histórico de Devocional</h3>
+    <div v-else-if="activeTab === 'devotional'" class="px-4">
         <MonthCalendar :posts="calendarPosts" @select="viewDay" />
     </div>
 
     <!-- Post Modal (Read Only) -->
-    <div v-if="selectedDayPost" class="modal modal-open">
-      <div class="modal-box p-0 overflow-hidden relative">
-        <button class="btn btn-sm btn-circle absolute right-2 top-2 bg-black/50 border-none text-white z-10" @click="selectedDayPost = null">✕</button>
-        <img v-if="selectedDayPost.image_url" :src="selectedDayPost.image_url" class="w-full object-cover" />
-        <div class="p-4">
-            <div v-if="selectedDayPost.created_at" class="font-bold text-sm opacity-50 mb-1">
-                {{ new Date(selectedDayPost.created_at).toLocaleDateString() }}
-            </div>
-            <p>{{ selectedDayPost.caption }}</p>
+    <Teleport to="body">
+      <div v-if="selectedDayPost" class="modal modal-open z-[5000]">
+        <div class="modal-box p-0 overflow-hidden relative">
+          <button class="btn btn-sm btn-circle absolute right-2 top-2 bg-black/50 border-none text-white z-10" @click="selectedDayPost = null">✕</button>
+          <img v-if="selectedDayPost.image_url" :src="selectedDayPost.image_url" class="w-full object-cover" />
+          <div class="p-4">
+              <div v-if="selectedDayPost.created_at" class="font-bold text-sm opacity-50 mb-1">
+                  {{ new Date(selectedDayPost.created_at).toLocaleDateString() }}
+              </div>
+              <p>{{ selectedDayPost.caption }}</p>
+          </div>
         </div>
+        <form method="dialog" class="modal-backdrop">
+          <button @click="selectedDayPost = null">close</button>
+        </form>
       </div>
-      <form method="dialog" class="modal-backdrop">
-        <button @click="selectedDayPost = null">close</button>
-      </form>
-    </div>
+    </Teleport>
 
   </div>
   <div v-else-if="error" class="text-center py-20 opacity-50">
@@ -78,21 +113,23 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft as ArrowLeftIcon } from 'lucide-vue-next'
 import type { Database, Tables } from '@/types/database.types'
 
 const route = useRoute()
 const router = useRouter()
 const client = useSupabaseClient<Database>()
-const { userId } = useAuthUser()
+const userId = useState<string | null>('userId')
 const { isFollowing, toggleFollow } = useFollow()
 
 const username = route.params.username as string
+const activeTab = ref<'timeline' | 'devotional'>('timeline')
 
-// Define a specific type for the partial post data we select
-type PostData = Pick<Tables<'posts'>, 'created_at' | 'image_url' | 'caption' | 'type'>
+// Update PostData logic
+// We need full post data for the Card, but partial for calendar is fine.
+// Let's use 'any' for simplicity in transition or robust typing.
+type Post = any 
 
-const selectedDayPost = ref<PostData | null>(null)
+const selectedDayPost = ref<Post | null>(null)
 
 // 1. Fetch Profile by Username
 const { data: profile, error } = await useAsyncData(`user-${username}`, async () => {
@@ -118,24 +155,40 @@ onMounted(async () => {
   }
 })
 
-// 4. Fetch Posts for Calendar
+// 4. Fetch All Posts (Timeline + Calendar)
 const { data: posts } = await useAsyncData(`user-posts-${username}`, async () => {
   if (!profile.value) return []
   const { data } = await client
     .from('posts')
-    .select('created_at, image_url, caption, type')
+    .select(`
+        *,
+        profiles (username, full_name, avatar_url),
+        likes (user_id),
+        comments (count)
+    `)
     .eq('user_id', profile.value.id)
-    .eq('type', 'devotional')
+    .order('created_at', { ascending: false })
   
-  return data
+  if (!data) return []
+
+  return data.map(p => ({
+        ...p,
+        likes_count: p.likes?.length || 0,
+        liked_by_me: userId.value ? p.likes?.some((l: any) => l.user_id === userId.value) : false,
+        comments: null, // Remove raw count array
+        comments_count: p.comments ? p.comments[0]?.count : 0
+    }))
 }, { watch: [profile] })
 
-// Filter posts to ensure they satisfy MonthCalendar props (string type for created_at and image_url)
+// Filter posts for Calendar
 const calendarPosts = computed(() => {
   if (!posts.value) return []
-  return posts.value.filter((p): p is PostData & { created_at: string; image_url: string } => {
-    return !!p.created_at && !!p.image_url
-  })
+  return posts.value
+    .filter((p: any) => p.type === 'devotional' && p.created_at)
+    .map((p: any) => ({
+      ...p,
+      created_at: p.created_at as string
+    }))
 })
 
 async function handleFollow() {
@@ -153,7 +206,7 @@ async function handleFollow() {
 function viewDay(dateStr: string) {
   if (!posts.value) return
   
-  const post = posts.value.find(p => p.created_at?.startsWith(dateStr))
+  const post = posts.value.find((p: any) => p.created_at?.startsWith(dateStr) && p.type === 'devotional')
   
   if (post) selectedDayPost.value = post
 }

@@ -1,95 +1,48 @@
 <template>
-  <div class="pb-20">
-    <div class="navbar bg-base-100 shadow mb-4 sticky top-0 z-40">
-      <div class="flex-1">
-        <a class="btn btn-ghost text-xl text-primary">Feed Devocional</a>
+  <div class="pb-20 max-w-[680px] mx-auto">
+    <!-- Polling Banner (Floating Top) -->
+    <transition enter-active-class="transition ease-out duration-200" enter-from-class="-translate-y-full opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition ease-in duration-150" leave-from-class="translate-y-0 opacity-100" leave-to-class="-translate-y-full opacity-0">
+      <div v-if="hasNewPosts" class="fixed top-20 left-0 right-0 z-30 flex justify-center pointer-events-none">
+        <button class="pointer-events-auto bg-base-100 text-base-content border border-base-300 px-4 py-2 rounded-full text-sm font-medium shadow-lg flex items-center gap-2 hover:scale-105 transition-transform" @click="refreshFeed">
+          <span>{{ newPostCount > 0 ? newPostCount : '' }} Novas publicações</span>
+          <Icon name="lucide:arrow-up" class="w-3 h-3" />
+        </button>
       </div>
-      <div class="flex-none">
-        <NuxtLink to="/post" class="btn btn-primary btn-sm btn-circle">
-          <plus-icon class="w-4 h-4" />
-        </NuxtLink>
-      </div>
+    </transition>
+    
+    <!-- Top Header Mobile (Devotion Logo) -->
+    <div class="flex justify-center py-4 md:hidden border-b border-gray-800/50 sticky top-0 bg-base-100/80 backdrop-blur z-20">
+         <h1 class="font-bold text-xl tracking-tighter text-white">devotion</h1>
     </div>
 
-    <div v-if="hasNewPosts" class="fixed top-24 left-1/2 -translate-x-1/2 z-50">
-      <button class="btn btn-primary btn-sm rounded-full shadow-lg gap-2 animate-bounce" @click="refreshFeed">
-        <arrow-up-icon class="w-4 h-4" />
-        Novas publicações
-      </button>
-    </div>
-
+    <!-- Feed Content -->
     <div v-if="pending" class="flex justify-center p-8">
-      <span class="loading loading-spinner loading-lg"></span>
+      <span class="loading loading-spinner loading-md text-gray-700"></span>
     </div>
 
-    <div v-else class="flex flex-col gap-6">
-      <div v-for="post in posts" :key="post.id" class="card bg-base-100 shadow-xl mx-auto w-full max-w-md">
-        <!-- Header -->
-        <div class="flex items-center gap-3 p-4">
-          <div class="avatar">
-            <div class="w-10 rounded-full">
-              <img :src="post.profiles?.avatar_url || 'https://api.dicebear.com/7.x/initials/svg?seed=' + post.profiles?.username" />
-            </div>
-          </div>
-          <div>
-            <div class="font-bold cursor-pointer" @click="router.push(`/user/${post.profiles?.username}`)">
-              {{ post.profiles?.full_name }}
-            </div>
-            <div class="text-xs opacity-50 flex items-center gap-1">
-              {{ post.created_at ? new Date(post.created_at).toLocaleDateString() : '' }} 
-              <span v-if="post.type === 'devotional'" class="badge badge-xs badge-secondary">Devocional</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Image -->
-        <figure v-if="post.image_url" class="rounded-none">
-          <img :src="post.image_url" class="w-full object-cover aspect-square" loading="lazy" />
-        </figure>
-
-        <!-- Content -->
-        <div class="card-body p-4 pt-2">
-          <div class="flex justify-between items-center mb-2">
-            <div class="flex gap-4">
-              <button class="btn btn-ghost btn-circle btn-sm" @click="toggleLike(post)">
-                <heart-icon class="w-6 h-6" :class="{ 'fill-red-500 text-red-500': post.liked_by_me }" />
-              </button>
-              <button class="btn btn-ghost btn-circle btn-sm">
-                <message-circle-icon class="w-6 h-6" />
-              </button>
-            </div>
-            <div class="text-sm font-bold opacity-70">{{ post.likes_count || 0 }} curtidas</div>
-          </div>
-
-          <p v-if="post.caption">
-            <span class="font-bold">{{ post.profiles?.username }}</span> {{ post.caption }}
-          </p>
-        </div>
-      </div>
+    <div v-else class="flex flex-col">
+      <PostCard v-for="post in posts" :key="post.id" :post="post" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Heart, MessageCircle, Plus as PlusIcon, ArrowUp as ArrowUpIcon } from 'lucide-vue-next'
-import type { Database } from '@/types/database.types'
-
 const client = useSupabaseClient()
-const user = useSupabaseUser()
-const router = useRouter()
+const userId = useState<string | null>('userId')
+const router = useRouter() // Kept if needed by other logic, though PostCard handles navigation
 const hasNewPosts = ref(false)
+const newPostCount = ref(0)
 let pollingInterval: any = null
 
-// Fetch posts with related profile info and like count
-// Note: Supabase JS select allows embedded resources
-// Fetch posts with related profile info and like count
+/* --- Data Fetching --- */
 const { data: posts, pending, refresh } = await useAsyncData('feed', async () => {
     const { data, error } = await client
         .from('posts')
         .select(`
             *,
             profiles (username, full_name, avatar_url),
-            likes (user_id)
+            likes (user_id),
+            comments (count)
         `)
         .order('created_at', { ascending: false })
 
@@ -98,42 +51,28 @@ const { data: posts, pending, refresh } = await useAsyncData('feed', async () =>
         return []
     }
 
-    // Transform for UI
+    // Transform for UI (Optimistic UI ready)
     return data.map(p => ({
         ...p,
         likes_count: p.likes.length,
-        liked_by_me: user.value ? p.likes.some((l: any) => l.user_id === user.value?.id) : false
+        liked_by_me: userId.value ? p.likes.some((l: any) => l.user_id === userId.value) : false,
+        comments: null, // Remove raw count array so PostCard uses comments_count
+        comments_count: p.comments ? p.comments[0]?.count : 0
     }))
 }, {
+    // Basic cache strategy
     getCachedData: (key) => {
         const nuxtApp = useNuxtApp()
         const cached = nuxtApp.payload.data[key] || nuxtApp.static.data[key]
         if (!cached) return
-
-        // Check if cache is expired (5 minutes)
-        const expirationDate = new Date()
-        expirationDate.setMinutes(expirationDate.getMinutes() - 5)
-
-        const cachedTimestamp = (nuxtApp.payload.data as any)[`${key}-timestamp`]
-        if (cachedTimestamp && new Date(cachedTimestamp) > expirationDate) {
-            return cached
-        }
-        // If no timestamp or expired, return undefined to re-fetch
-        return
-    }
+        return cached
+    },
+    watch: [userId]
 })
 
-// Set timestamp after successful fetch
-// Watch posts to update cache timestamp
-watch(posts, (newPosts) => {
-  if (newPosts) {
-     const nuxtApp = useNuxtApp()
-    ;(nuxtApp.payload.data as any)['feed-timestamp'] = new Date().toISOString()
-  }
-}, { immediate: true })
-
+/* --- Polling --- */
 onMounted(() => {
-  pollingInterval = setInterval(checkForUpdates, 10 * 60 * 1000) // 10 min
+  pollingInterval = setInterval(checkForUpdates, 30 * 1000) // 30 sec
 })
 
 onUnmounted(() => {
@@ -141,44 +80,23 @@ onUnmounted(() => {
 })
 
 async function checkForUpdates() {
-     // Check if there is a newer post than the one we are showing
      if (!posts.value || posts.value.length === 0) return
 
-     const { data } = await client
+     const { data, count } = await client
         .from('posts')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+        .select('created_at', { count: 'exact', head: true })
+        .gt('created_at', posts.value[0]?.created_at || new Date().toISOString())
      
-     if (data && new Date(data.created_at) > new Date(posts.value[0].created_at)) {
+     if (count && count > 0) {
          hasNewPosts.value = true
+         newPostCount.value = count
      }
 }
 
 async function refreshFeed() {
     await refresh()
     hasNewPosts.value = false
+    newPostCount.value = 0
     window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-async function toggleLike(post: any) {
-  if (!user.value?.id) return router.push('/login')
-
-  if (post.liked_by_me) {
-    // Unlike
-    const { error } = await client.from('likes').delete().match({ post_id: post.id, user_id: user.value.id })
-    if (!error) {
-       post.liked_by_me = false
-       post.likes_count--
-    }
-  } else {
-    // Like
-    const { error } = await client.from('likes').insert({ post_id: post.id, user_id: user.value.id })
-    if (!error) {
-       post.liked_by_me = true
-       post.likes_count++
-    }
-  }
 }
 </script>

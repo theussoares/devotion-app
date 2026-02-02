@@ -1,47 +1,93 @@
 <template>
-  <div class="flex justify-center items-center min-h-screen bg-base-200 p-4">
+  <div class="flex justify-center items-center min-h-dvh bg-base-200 p-4">
     <div class="card w-full max-w-sm shadow-2xl bg-base-100">
-      <form class="card-body" @submit.prevent="handleRegister">
+        <form class="card-body" @submit.prevent="handleSubmitRegister">
         <h2 class="card-title justify-center text-2xl font-bold mb-4">Criar Conta</h2>
         
-        <div class="form-control">
-          <label class="label"><span class="label-text">Nome Completo</span></label>
-          <input v-model="fullName" type="text" placeholder="Seu nome" class="input input-bordered" required />
+        <div class="space-y-4">
+          <AppInput
+            name="fullName"
+            type="text"
+            placeholder="Nome Completo"
+            icon="lucide:user"
+          />
+  
+          <AppInput
+            name="username"
+            type="text"
+            placeholder="@usuario"
+            icon="lucide:at-sign"
+            @blur="formatUsername"
+          />
+  
+          <div class="grid grid-cols-2 gap-4">
+             <div class="form-control">
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-base-content/50">
+                    <Icon name="lucide:map-pin" class="w-5 h-5" />
+                  </span>
+                  <select 
+                    class="select select-bordered w-full pl-10 bg-base-200 focus:bg-base-100 transition-colors" 
+                    @change="handleStateChange"
+                  >
+                    <option value="" disabled selected>Estado</option>
+                    <option v-for="state in states" :key="state.id" :value="state.id">
+                        {{ state.sigla }}
+                    </option>
+                  </select>
+                </div>
+             </div>
+ 
+             <div class="form-control">
+                <select 
+                  class="select select-bordered w-full bg-base-200 focus:bg-base-100 transition-colors" 
+                  :disabled="!selectedState || loadingCities"
+                  @change="handleCityChange"
+                >
+                    <option value="" disabled selected>Cidade</option>
+                    <option v-for="city in cities" :key="city.id" :value="city.id">
+                        {{ city.name }}
+                    </option>
+                </select>
+             </div>
+          </div>
+          <label v-if="cityError" class="label pb-0 pt-1">
+             <span class="label-text-alt text-error text-center w-full">{{ cityError }}</span>
+          </label>
+          <!-- Hidden inputs for validation -->
+          <input type="hidden" :value="cityValue" />
+          <input type="hidden" :value="cityIbgeId" />
+  
+          <AppInput
+            name="email"
+            type="email"
+            placeholder="Email"
+            icon="lucide:mail"
+          />
+  
+          <AppInput
+            name="password"
+            type="password"
+            placeholder="Senha (min. 6 caracteres)"
+            icon="lucide:lock"
+          />
         </div>
 
-        <div class="form-control">
-          <label class="label"><span class="label-text">Nome de Usuário (único)</span></label>
-          <input v-model="username" type="text" placeholder="@usuario" class="input input-bordered" required />
-        </div>
-
-        <div class="form-control">
-          <label class="label"><span class="label-text">Cidade</span></label>
-          <input v-model="city" type="text" placeholder="Ex: São Paulo" class="input input-bordered" required />
-        </div>
-
-        <div class="form-control">
-          <label class="label"><span class="label-text">Email</span></label>
-          <input v-model="email" type="email" placeholder="email" class="input input-bordered" required />
-        </div>
-
-        <div class="form-control">
-          <label class="label"><span class="label-text">Senha</span></label>
-          <input v-model="password" type="password" placeholder="senha" class="input input-bordered" required minlength="6" />
-        </div>
-
-        <div v-if="errorMsg" class="alert alert-error text-sm mt-2">
+        <div v-if="errorMsg" class="alert alert-error text-sm mt-4">
           {{ errorMsg }}
         </div>
 
         <div class="form-control mt-6">
-          <button class="btn btn-primary" :disabled="loading">
-            <span v-if="loading" class="loading loading-spinner"></span>
+          <button class="btn btn-primary w-full disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed" :disabled="isSubmitting">
+            <span v-if="isSubmitting" class="loading loading-spinner"></span>
             Cadastrar
           </button>
         </div>
+
+        <AppCaptcha ref="captchaRef" @verify="token => captchaToken = token" />
         
         <div class="text-center text-sm mt-4">
-          Já tem conta? <NuxtLink to="/login" class="link link-primary">Entrar</NuxtLink>
+          Já tem conta? <NuxtLink to="/login" class="link link-primary font-semibold">Entrar</NuxtLink>
         </div>
       </form>
     </div>
@@ -49,63 +95,101 @@
 </template>
 
 <script setup lang="ts">
-const client = useSupabaseClient()
+import { useForm, useField } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { registerSchema } from '~/schemas/auth'
+
 const router = useRouter()
+const { register } = useAuthService()
+const { getStates, getCitiesByState } = useIbge()
 
-const fullName = ref('')
-const username = ref('')
-const city = ref('')
-const email = ref('')
-const password = ref('')
-const loading = ref(false)
+// Form Setup
+const { handleSubmit, errors, isSubmitting, setFieldValue, values } = useForm({
+  validationSchema: toTypedSchema(registerSchema),
+  initialValues: {
+    cityIbgeId: 0,
+    city: ''
+  }
+})
+
+// Specific fields we need to manually handle or watch
+const { value: cityValue, errorMessage: cityError } = useField('city')
+const { value: cityIbgeId } = useField('cityIbgeId')
+
+// Local State for Dropdowns
+const states = ref<any[]>([])
+const cities = ref<any[]>([])
+const selectedState = ref<number | null>(null)
+const loadingCities = ref(false)
+
 const errorMsg = ref('')
+const captchaToken = ref('')
+const captchaRef = ref()
 
-async function handleRegister() {
-  loading.value = true
-  errorMsg.value = ''
+onMounted(async () => {
+    states.value = await getStates()
+})
 
-  // 1. Sign Up using Supabase Auth
-  // We pass metadata so the trigger 'handle_new_user' can populate the profiles table
-  const { data, error } = await client.auth.signUp({
-    email: email.value,
-    password: password.value,
-    options: {
-      data: {
-        full_name: fullName.value,
-        username: username.value,
-        city: city.value, // Although not in the trigger I showed earlier, I should update the trigger or update profile after?
-        // Wait, the trigger I wrote ONLY takes full_name, avatar_url, username. 
-        // I need to Update the profile for CITY after creation if the trigger misses it.
-        // OR better, rely on metadata if I update the trigger? 
-        // For now, I'll update the profile manually after signup to be safe, or assume trigger catches it if I fix it.
-        // Actually, looking at `supabase_setup.md`, the trigger uses:
-        // new.raw_user_meta_data->>'username'
-        // new.raw_user_meta_data->>'full_name'
-        // It DOES NOT map 'city'. 
-      }
+async function handleStateChange(event: any) {
+    const ufId = event.target.value
+    selectedState.value = ufId
+    
+    // Reset City
+    setFieldValue('city', '')
+    setFieldValue('cityIbgeId', 0)
+    cities.value = []
+
+    if (ufId) {
+        loadingCities.value = true
+        cities.value = await getCitiesByState(Number(ufId))
+        loadingCities.value = false
     }
+}
+
+function handleCityChange(event: any) {
+    const cityId = Number(event.target.value)
+    const cityObj = cities.value.find(c => c.id === cityId)
+    
+    if (cityObj) {
+        const stateObj = states.value.find(s => s.id == selectedState.value)
+        const cityName = `${cityObj.name} - ${stateObj?.sigla}`
+        setFieldValue('city', cityName)
+        setFieldValue('cityIbgeId', cityId)
+    }
+}
+
+function formatUsername() {
+   const username = values.username as string | undefined
+   if (username && !username.startsWith('@')) {
+       setFieldValue('username', '@' + username)
+   }
+}
+
+const handleSubmitRegister = handleSubmit(async (formValues) => {
+  errorMsg.value = ''
+  
+  if (!captchaToken.value) {
+      captchaRef.value?.forceCheck()
+      errorMsg.value = 'Por favor, complete a verificação de segurança abaixo.'
+      return
+  }
+  
+  const { success, message } = await register({
+      fullName: formValues.fullName,
+      username: formValues.username, // Transformed by schema but safer to use formValues
+      email: formValues.email,
+      password: formValues.password,
+      city: formValues.city,
+      cityIbgeId: formValues.cityIbgeId,
+      captchaToken: captchaToken.value
   })
 
-  if (error) {
-    errorMsg.value = error.message
-    loading.value = false
-    return
+  if (!success) {
+      errorMsg.value = message || 'Erro ao registrar.'
+      return
   }
 
-  // 2. Post-Registration: Update City (since trigger didn't handle it)
-  if (data.user) {
-    const { error: updateError } = await client
-      .from('profiles')
-      .update({ city: city.value })
-      .eq('id', data.user.id)
-    
-    if (updateError) {
-      console.error('Error updating city:', updateError)
-      // Non-critical, can continue
-    }
-
-    // Redirect
-    router.push('/')
-  }
-}
+  // Success
+  router.push('/')
+})
 </script>
