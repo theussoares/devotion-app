@@ -46,9 +46,25 @@ export const useAuthService = () => {
             return { success: true }
 
         } catch (error: any) {
+            // Check if error is due to email not confirmed
+            const errorMsg = error.statusMessage || error.message || ''
+
+            if (errorMsg.toLowerCase().includes('email not confirmed') ||
+                errorMsg.toLowerCase().includes('email confirmation')) {
+                // Redirect to verify-email page
+                await router.push({
+                    path: '/verify-email',
+                    query: { email }
+                })
+                return {
+                    success: false,
+                    message: 'Email não confirmado. Verifique sua caixa de entrada.'
+                }
+            }
+
             return {
                 success: false,
-                message: error.statusMessage || 'Erro ao entrar.'
+                message: errorMsg || 'Erro ao entrar.'
             }
         }
     }

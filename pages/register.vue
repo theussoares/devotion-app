@@ -189,7 +189,10 @@ const handleSubmitRegister = handleSubmit(async (formValues) => {
       return
   }
 
-  // Success
-  router.push('/')
+  // Success - redirect to verify email page
+  router.push({
+    path: '/verify-email',
+    query: { email: formValues.email }
+  })
 })
 </script>
