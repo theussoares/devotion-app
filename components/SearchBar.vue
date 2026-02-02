@@ -12,7 +12,6 @@
         type="text"
         placeholder="Buscar usuários..."
         class="input input-bordered w-full pl-12 pr-12 bg-gray-900 border-gray-800 text-white placeholder-gray-500 focus:border-primary"
-        @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       />
 
       <!-- Clear Button -->
@@ -33,12 +32,16 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { useVModel } from '@vueuse/core';
+
+const props = defineProps<{
   modelValue: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: string]
   clear: []
 }>()
+
+const modelValue = useVModel(props, 'modelValue', emit)
 </script>

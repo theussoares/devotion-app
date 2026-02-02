@@ -1,18 +1,23 @@
 <template>
-  <div class="min-h-screen pb-20">
+  <div class="min-h-dvh">
     <!-- Header -->
-    <div class="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-gray-800 px-4 py-3">
+    <!-- <div class="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-gray-800 px-4 py-3">
       <h1 class="text-xl font-bold text-white mb-3">Buscar</h1>
       <SearchBar v-model="query" @clear="clearSearch" />
-    </div>
+    </div> -->
 
     <!-- Results -->
-    <div class="px-4 py-4">
+    <!-- <div class="px-4 py-4">
       <SearchResults 
         :results="results"
         :loading="loading"
         :query="query"
       />
+    </div> -->
+  
+  
+    <div class="min-h-dvh flex items-center justify-center">
+      Em desenvolvimento...
     </div>
   </div>
 </template>
