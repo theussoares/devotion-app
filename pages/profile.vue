@@ -100,23 +100,12 @@
          </div>
     </div>
 
-    <!-- Modal for Selected Post (Calendar) -->
-    <Teleport to="body">
-      <div v-if="selectedDayPost" class="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" @click.self="selectedDayPost = null">
-        <div class="bg-gray-900 w-full max-w-sm sm:rounded-2xl rounded-t-2xl p-6 shadow-2xl border border-gray-800 animate-in slide-in-from-bottom duration-300 text-white">
-          <div class="flex justify-between items-center mb-4">
-              <h3 class="font-bold text-lg">{{ new Date(selectedDayPost.created_at).toLocaleDateString('pt-BR') }}</h3>
-              <button class="btn btn-circle btn-ghost btn-sm text-gray-400 hover:text-white" @click="selectedDayPost = null">✕</button>
-          </div>
-          
-          <figure class="rounded-xl overflow-hidden mb-4 border border-gray-800 aspect-square bg-black">
-             <img :src="selectedDayPost.image_url || undefined" class="w-full h-full object-cover" />
-          </figure>
-          
-          <p v-if="selectedDayPost.caption" class="text-sm text-gray-300">{{ selectedDayPost.caption }}</p>
-        </div>
-      </div>
-    </Teleport>
+    <!-- Modal for Multiple Posts (Calendar) -->
+    <DayPostsModal
+      :isOpen="showDayModal"
+      :posts="selectedDayPosts"
+      @close="showDayModal = false"
+    />
   </div>
   
   <div v-else class="flex justify-center py-20">
@@ -127,6 +116,7 @@
 <script setup lang="ts">
 // Redirect handled by global middleware
 
+import type { Post } from '@/types/post.types'
 import type { Database } from '@/types/database.types'
 
 const userId = useState<string | null>('userId')
@@ -155,19 +145,9 @@ function handleBioSaved(bio: string) {
     }
 }
 
-// Define the shape of the post object we are selecting
-type Post = {
-    id: string
-    created_at: string
-    image_url: string | null
-    caption: string | null
-    type: string
-    profiles?: any
-    likes_count?: number
-    liked_by_me?: boolean
-}
-
-const selectedDayPost = ref<Post | null>(null)
+// Modal state for multiple posts
+const showDayModal = ref(false)
+const selectedDayPosts = ref<Post[]>([])
 
 // 1. Fetch Profile
 const { myProfile: profile } = useProfile()
@@ -206,10 +186,17 @@ const devotionalPosts = computed(() => {
 
 function viewDay(dateStr: string) {
     if (!posts.value) return
-    const post = posts.value.find(p => p.created_at.startsWith(dateStr) && p.type === 'devotional')
-    if (post) {
-        selectedDayPost.value = post
-    }
+    
+    // Find all posts for this day
+    const dayPosts = posts.value.filter(p => 
+        p.created_at?.startsWith(dateStr) && p.type === 'devotional'
+    )
+    
+    if (dayPosts.length === 0) return
+    
+    // Always open modal (even for single post)
+    selectedDayPosts.value = dayPosts
+    showDayModal.value = true
 }
 
 async function handleAvatarUploaded(url: string) {

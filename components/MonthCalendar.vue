@@ -49,9 +49,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { Post } from '@/types/post.types'
 
 const props = defineProps<{
-  posts?: { created_at: string, image_url?: string | null }[]
+  posts?: Post[]
 }>()
 
 const emit = defineEmits(['select'])
@@ -89,12 +90,6 @@ function getDate(day: number) {
 
 function hasPost(day: number) {
   const dateStr = getDate(day)
-  return props.posts?.find(p => p.created_at.startsWith(dateStr))
+  return props.posts?.find(p => p.created_at?.startsWith(dateStr))
 }
 </script>
-
-<style scoped>
-.calendar-widget {
-  /* Minimal aesthetic overrides if needed, mostly handled by Tailwind classes */
-}
-</style>
