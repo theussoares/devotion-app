@@ -15,8 +15,10 @@ export default defineNuxtConfig({
     // Public keys (client-side)
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL,
-      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAACW3FiHgLjhchW5JU8vXgXd3BoM',
-      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAACW3FiHgLjhchW5JU8vXgXd3BoM'
+      turnstile: {
+        siteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAACW3HOA20ySSxbid', // Invisible Default
+        siteKeyVisible: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY_VISIBLE || '0x4AAAAAACW3FnA5LymNDp7a', // Fallback
+      }
     }
   },
   pwa: {

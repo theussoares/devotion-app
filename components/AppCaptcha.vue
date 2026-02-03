@@ -6,7 +6,7 @@
          <vue-turnstile 
             v-model="token"
             ref="turnstileInvisible"
-            :site-key="config.public.turnstileSiteKey"
+            :site-key="config.public.turnstile.siteKey"
             appearance="interaction-only" 
             @verify="onVerify"
             @error="onError"
@@ -19,7 +19,7 @@
          <vue-turnstile 
             v-model="token"
             ref="turnstileVisible"
-            :site-key="config.public.turnstileSiteKey" 
+            :site-key="config.public.turnstile.siteKeyVisible" 
             appearance="always"
             @verify="onVerify"
             @error="onErrorVisible"
