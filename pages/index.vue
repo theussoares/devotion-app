@@ -29,13 +29,11 @@
 <script setup lang="ts">
 const client = useSupabaseClient()
 const userId = useState<string | null>('userId')
-const router = useRouter() // Kept if needed by other logic, though PostCard handles navigation
 const hasNewPosts = ref(false)
 const newPostCount = ref(0)
 let pollingInterval: any = null
 
-/* --- Data Fetching --- */
-const { data: posts, pending, refresh } = await useAsyncData('feed', async () => {
+async function fetchFeedData() {
     const { data, error } = await client
         .from('posts')
         .select(`
@@ -51,28 +49,23 @@ const { data: posts, pending, refresh } = await useAsyncData('feed', async () =>
         return []
     }
 
-    // Transform for UI (Optimistic UI ready)
     return data.map(p => ({
         ...p,
         likes_count: p.likes.length,
         liked_by_me: userId.value ? p.likes.some((l: any) => l.user_id === userId.value) : false,
-        comments: null, // Remove raw count array so PostCard uses comments_count
+        comments: null,
         comments_count: p.comments ? p.comments[0]?.count : 0
     }))
-}, {
-    // Basic cache strategy
-    getCachedData: (key) => {
-        const nuxtApp = useNuxtApp()
-        const cached = nuxtApp.payload.data[key] || nuxtApp.static.data[key]
-        if (!cached) return
-        return cached
-    },
+}
+
+/* --- Data Fetching --- */
+const { data: posts, pending, refresh } = await useAsyncData('feed', fetchFeedData, {
     watch: [userId]
 })
 
 /* --- Polling --- */
 onMounted(() => {
-  pollingInterval = setInterval(checkForUpdates, 30 * 1000) // 30 sec
+  pollingInterval = setInterval(checkForUpdates, 120 * 1000) // 2 min
 })
 
 onUnmounted(() => {
@@ -82,19 +75,30 @@ onUnmounted(() => {
 async function checkForUpdates() {
      if (!posts.value || posts.value.length === 0) return
 
-     const { data, count } = await client
-        .from('posts')
-        .select('created_at', { count: 'exact', head: true })
-        .gt('created_at', posts.value[0]?.created_at || new Date().toISOString())
-     
-     if (count && count > 0) {
-         hasNewPosts.value = true
-         newPostCount.value = count
+     try {
+         const { count, error } = await client
+            .from('posts')
+            .select('created_at', { count: 'exact', head: true })
+            .gt('created_at', posts.value[0]?.created_at)
+
+         if (error) throw error
+         
+         if (count && count > 0) {
+             hasNewPosts.value = true
+             newPostCount.value = count
+         }
+     } catch (e) {
+         console.error('Polling error:', e)
      }
 }
 
 async function refreshFeed() {
-    await refresh()
+    // Explicitly re-fetch to ensure reactivity
+    const newData = await fetchFeedData()
+    if (newData) {
+        posts.value = newData
+    }
+    
     hasNewPosts.value = false
     newPostCount.value = 0
     window.scrollTo({ top: 0, behavior: 'smooth' })
