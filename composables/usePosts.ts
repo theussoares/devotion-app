@@ -48,8 +48,30 @@ export const usePosts = () => {
         return data.publicUrl
     }
 
+    const moderateImage = async (file: File): Promise<{ approved: boolean; reason?: string; category?: string }> => {
+        const formData = new FormData()
+        formData.append('image', file)
+
+        try {
+            const result = await $fetch<{ approved: boolean; reason?: string; category?: string }>('/api/moderate/image', {
+                method: 'POST',
+                body: formData
+            })
+            return result
+        } catch (e: any) {
+            console.error('Moderation error:', e)
+            // If API fails, we could block by default or allow with warning. 
+            // For safety, let's block but give a technical error reason.
+            return {
+                approved: false,
+                reason: e.statusMessage || 'Erro técnico na validação de segurança.'
+            }
+        }
+    }
+
     return {
         createPost,
-        uploadImage
+        uploadImage,
+        moderateImage
     }
 }

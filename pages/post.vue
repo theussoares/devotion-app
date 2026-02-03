@@ -114,7 +114,7 @@
     </div>
 
     <!-- Fixed Publish Button -->
-    <div class="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md border-t border-gray-800 px-4 py-4 z-20">
+    <div class="fixed bottom-[60px] left-0 right-0 bg-black/95 backdrop-blur-md border-t border-gray-800 px-4 py-4 z-20">
       <div class="max-w-2xl mx-auto">
         <button
           @click="submitPost"
@@ -163,19 +163,49 @@ function triggerFileInput() {
   fileInput.value?.click()
 }
 
+const moderating = ref(false)
+
 function handleFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     file.value = target.files[0] || null
     if (file.value) {
       previewUrl.value = URL.createObjectURL(file.value)
+      // Optional: Moderate on selection (better UX) or Submit
+      // Let's validate on selection to fail fast
+      validateImage(file.value)
     }
+  }
+}
+
+async function validateImage(imageFile: File) {
+  moderating.value = true
+  errorMsg.value = ''
+  
+  try {
+    const { moderateImage } = usePosts()
+    const result = await moderateImage(imageFile)
+    
+    if (!result.approved) {
+      errorMsg.value = `Imagem bloqueada: ${result.reason}`
+      // Clear file
+      file.value = null
+      previewUrl.value = null
+      if (fileInput.value) fileInput.value.value = ''
+    }
+  } catch (e: any) {
+    console.error(e)
+    errorMsg.value = 'Erro ao validar imagem: ' + e.message
+    // Optional: Allow user to retry or block
+  } finally {
+    moderating.value = false
   }
 }
 
 function clearFile() {
   file.value = null
   previewUrl.value = null
+  errorMsg.value = ''
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -183,6 +213,9 @@ function clearFile() {
 
 async function submitPost() {
   if (!canPublish.value) return
+  
+  // Double check moderation if needed, but since we moderating on selection
+  // we can rely on file being present (cleared if failed)
   
   uploading.value = true
   errorMsg.value = ''

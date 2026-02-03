@@ -8,16 +8,14 @@ export default defineNuxtConfig({
   },
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
-    turnstile: {
-      secretKey: process.env.TURNSTILE_SECRET_KEY,
-      secretKeyVisible: process.env.TURNSTILE_SECRET_KEY_VISIBLE,
-    },
+    // Private keys (server-only)
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
+    turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY,
+    // Public keys (client-side)
     public: {
-      turnstile: {
-        siteKey: '0x4AAAAAACW3HOA20ySSxbid', // Invisible Default
-        siteKeyVisible: '0x4AAAAAACW3FnA5LymNDp7a', // Fallback
-      },
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL,
+      turnstileSiteKey: '0x4AAAAAACW3FiHgLjhchW5JU8vXgXd3BoM'
     }
   },
   pwa: {

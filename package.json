@@ -11,6 +11,7 @@
     "gen-types": "npx supabase gen types typescript --project-id deapsdkjozyfoipbivod > types/database.types.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@nuxt/icon": "^2.2.1",
     "@nuxtjs/supabase": "^2.0.3",
     "@nuxtjs/tailwindcss": "^6.14.0",

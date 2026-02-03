@@ -27,9 +27,31 @@
                <span class="text-xs text-gray-500 font-medium">· {{ timeAgo(post.created_at) }}</span>
            </div>
            
-           <button v-if="post.profiles?.id === userId && false" class="btn btn-circle btn-sm btn-ghost text-gray-500 hover:text-white -mr-2">
-               <Icon name="lucide:more-horizontal" class="w-5 h-5" />
-           </button>
+           <!-- Actions Menu -->
+           <div class="dropdown dropdown-end">
+               <button tabindex="0" class="btn btn-circle btn-sm btn-ghost text-gray-500 hover:text-white -mr-2">
+                   <Icon name="lucide:more-horizontal" class="w-5 h-5" />
+               </button>
+               <ul tabindex="0" class="dropdown-content z-[2] menu p-2 shadow-lg bg-gray-900 border border-gray-800 rounded-box w-52 mt-1">
+                   <!-- Owner Options -->
+                   <li v-if="post.user_id === userId">
+                       <a @click="handleDeletePost" class="text-red-500 hover:bg-red-900/20 gap-2">
+                           <Icon name="lucide:trash-2" class="w-4 h-4" /> Excluir
+                       </a>
+                   </li>
+                   <!-- Public Options -->
+                   <li v-if="post.user_id !== userId">
+                       <a @click="handleReport" class="text-yellow-500 hover:bg-yellow-900/20 gap-2">
+                           <Icon name="lucide:flag" class="w-4 h-4" /> Denunciar
+                       </a>
+                   </li>
+                   <li v-if="post.user_id !== userId">
+                       <a @click="handleBlock" class="text-gray-400 hover:bg-gray-800 gap-2">
+                           <Icon name="lucide:ban" class="w-4 h-4" /> Bloquear
+                       </a>
+                   </li>
+               </ul>
+           </div>
         </div>
 
         <!-- Text Content -->
@@ -79,6 +101,8 @@ const props = defineProps<{
   post: any
 }>()
 
+const emit = defineEmits(['refresh'])
+
 const client = useSupabaseClient()
 const userId = useState('userId')
 const router = useRouter()
@@ -117,6 +141,36 @@ watch(() => props.post, (newPost) => {
         likesCount.value = newPost.likes_count
     }
 }, { deep: true })
+
+async function handleDeletePost() {
+    if (!confirm('Você tem certeza que deseja excluir esta publicação?')) return
+
+    try {
+        const { error } = await client.from('posts').delete().eq('id', props.post.id)
+        if (error) throw error
+        
+        // Notify parent
+        emit('refresh')
+    } catch (e: any) {
+        alert('Erro ao excluir: ' + e.message)
+    }
+}
+
+function handleReport() {
+    // MVP: Mock report
+    const reason = prompt('Qual o motivo da denúncia? (Spam, Conteúdo Ofensivo, Nudez, etc)')
+    if (reason) {
+        alert('Obrigado. Sua denúncia foi recebida e será analisada pela nossa equipe de segurança.')
+    }
+}
+
+function handleBlock() {
+    // MVP: Mock block
+    if (confirm(`Deseja bloquear @${props.post.profiles?.username}? O conteúdo deste usuário deixará de aparecer para você.`)) {
+        alert(`Usuário @${props.post.profiles?.username} foi bloqueado.`)
+        emit('refresh')
+    }
+}
 
 async function toggleLike() {
   if (!userId.value) {

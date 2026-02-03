@@ -28,7 +28,17 @@
               <a @click="openEditProfile" class="py-3 hover:bg-gray-800"><Icon name="lucide:edit-2" class="w-4 h-4 mr-2" /> Editar Perfil</a>
           </li>
           <li>
-              <a @click="handleLogout" class="py-3 hover:bg-red-900/20 text-red-400"><Icon name="lucide:log-out" class="w-4 h-4 mr-2" /> Sair</a>
+              <router-link to="/terms" class="py-3 hover:bg-gray-800"><Icon name="lucide:file-text" class="w-4 h-4 mr-2" /> Termos de Uso</router-link>
+          </li>
+          <li>
+              <router-link to="/privacy" class="py-3 hover:bg-gray-800"><Icon name="lucide:shield" class="w-4 h-4 mr-2" /> Privacidade</router-link>
+          </li>
+          <div class="divider my-1 border-gray-800"></div>
+          <li>
+              <a @click="handleLogout" class="py-3 hover:bg-gray-800 text-gray-400"><Icon name="lucide:log-out" class="w-4 h-4 mr-2" /> Sair</a>
+          </li>
+          <li>
+              <a @click="handleDeleteAccount" :class="{'opacity-50 pointer-events-none': isDeleting}" class="py-3 hover:bg-red-900/20 text-red-500 font-bold"><Icon name="lucide:trash-2" class="w-4 h-4 mr-2" /> {{ isDeleting ? 'Excluindo...' : 'Excluir Conta' }}</a>
           </li>
         </ul>
         <div class="modal-action">
@@ -119,6 +129,8 @@
 import type { Post } from '@/types/post.types'
 import type { Database } from '@/types/database.types'
 
+const router = useRouter()
+
 const userId = useState<string | null>('userId')
 const client = useSupabaseClient<Database>()
 const { logout } = useAuthService()
@@ -136,6 +148,36 @@ function openEditProfile() {
 async function handleLogout() {
     isMenuOpen.value = false
     await logout()
+}
+
+// Danger Zone: Delete Account
+const isDeleting = ref(false)
+async function handleDeleteAccount() {
+    if (!confirm('ATENÇÃO: Você tem certeza que deseja excluir sua conta? Esta ação é irreversível e apagará todos os seus dados.')) {
+        return
+    }
+
+    // Double confirmation
+    const username = profile.value?.username
+    const confirmation = prompt(`Para confirmar, digite seu nome de usuário: ${username}`)
+    if (confirmation !== username) {
+        alert('Nome de usuário incorreto. Ação cancelada.')
+        return
+    }
+
+    try {
+        isDeleting.value = true
+        await $fetch('/api/auth/delete', { method: 'DELETE' })
+        
+        await logout() // Ensure client session is cleared
+        alert('Conta excluída com sucesso.')
+        router.push('/login')
+    } catch (e: any) {
+        console.error('Delete account error:', e)
+        alert('Erro ao excluir conta: ' + (e.message || 'Tente novamente.'))
+    } finally {
+        isDeleting.value = false
+    }
 }
 
 function handleBioSaved(bio: string) {
