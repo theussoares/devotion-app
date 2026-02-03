@@ -20,14 +20,14 @@ export const verifyCaptcha = async (token: string): Promise<boolean> => {
     }
 
     // 1. Try Invisible Secret
-    if (config.turnstile.secretKey) {
-        const success = await verify(config.turnstile.secretKey)
+    if (config.turnstileSecretKey) {
+        const success = await verify(config.turnstileSecretKey as string)
         if (success) return true
     }
 
     // 2. Try Visible Secret (Fallback)
-    if (config.turnstile.secretKeyVisible) {
-        const success = await verify(config.turnstile.secretKeyVisible)
+    if (config.turnstileSecretKeyVisible) {
+        const success = await verify(config.turnstileSecretKeyVisible as string)
         if (success) return true
     }
 

@@ -12,6 +12,7 @@ export default defineNuxtConfig({
     geminiApiKey: process.env.GEMINI_API_KEY,
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
     turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY,
+    turnstileSecretKeyVisible: process.env.TURNSTILE_SECRET_KEY_VISIBLE,
     // Public keys (client-side)
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL,
