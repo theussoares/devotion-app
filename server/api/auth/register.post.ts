@@ -54,7 +54,8 @@ export default defineEventHandler(async (event) => {
                 data: {
                     full_name: payload.fullName,
                     username: payload.username,
-                    city: payload.city
+                    city: payload.city,
+                    city_ibge_id: payload.cityIbgeId
                 }
             }
         })

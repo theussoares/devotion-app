@@ -186,6 +186,8 @@ const handleSubmitRegister = handleSubmit(async (formValues) => {
 
   if (!success) {
       errorMsg.value = message || 'Erro ao registrar.'
+      captchaRef.value?.reset()
+      captchaToken.value = ''
       return
   }
 
