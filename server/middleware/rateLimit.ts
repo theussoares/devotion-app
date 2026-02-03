@@ -8,7 +8,7 @@ export default defineEventHandler((event) => {
     const ip = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
     const now = Date.now()
     const windowMs = 15 * 60 * 1000 // 15 minutes
-    const maxRequests = 100 // Max requests per window
+    const maxRequests = 250 // Max requests per window
 
     // Initialize IP tracking
     if (!requests.has(ip)) {
