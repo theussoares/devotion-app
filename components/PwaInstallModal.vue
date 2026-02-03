@@ -86,9 +86,9 @@
         <!-- Actions -->
         <div class="flex gap-3">
           <button @click="handleDismiss" class="btn btn-ghost flex-1">
-            Agora não
+            {{ canInstall ? 'Agora não' : 'Entendi' }}
           </button>
-          <button @click="handleInstall" class="btn btn-primary flex-1">
+          <button v-if="canInstall" @click="handleInstall" class="btn btn-primary flex-1">
             <Icon name="lucide:download" class="w-4 h-4" />
             Instalar
           </button>
@@ -99,5 +99,5 @@
 </template>
 
 <script setup lang="ts">
-const { showModal, platform, handleInstall, handleDismiss } = usePwaInstall()
+const { showModal, platform, handleInstall, handleDismiss, canInstall } = usePwaInstall()
 </script>

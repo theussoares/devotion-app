@@ -116,7 +116,7 @@ const route = useRoute()
 const router = useRouter()
 
 const isAuthRoute = computed(() => {
-  return route.path === '/login' || route.path === '/register' || route.path === '/verify-email'
+  return route.path === '/login' || route.path === '/register' || route.path === '/verify-email' || route.path === '/update-password' || route.path === '/forgot-password' || route.path === '/reset-password'
 })
 
 // Fetch Profile

@@ -99,6 +99,7 @@ export const usePwaInstall = () => {
         platform,
         isInstalled,
         handleInstall,
-        handleDismiss
+        handleDismiss,
+        canInstall: computed(() => !!deferredPrompt.value)
     }
 }
