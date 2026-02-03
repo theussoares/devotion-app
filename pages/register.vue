@@ -17,7 +17,6 @@
             type="text"
             placeholder="@usuario"
             icon="lucide:at-sign"
-            @blur="formatUsername"
           />
   
           <div class="grid grid-cols-2 gap-4">
@@ -158,12 +157,6 @@ function handleCityChange(event: any) {
     }
 }
 
-function formatUsername() {
-   const username = values.username as string | undefined
-   if (username && !username.startsWith('@')) {
-       setFieldValue('username', '@' + username)
-   }
-}
 
 const handleSubmitRegister = handleSubmit(async (formValues) => {
   errorMsg.value = ''
