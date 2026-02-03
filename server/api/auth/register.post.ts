@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
 
 const registerSchema = z.object({
     email: z.string().email(),
@@ -44,7 +44,21 @@ export default defineEventHandler(async (event) => {
         const client = await serverSupabaseClient(event)
         console.log('[Register] Supabase client initialized')
 
-        // 3. Create Auth User
+        // 3. Pre-check Username Availability
+        const { data: existingUser } = await client
+            .from('profiles')
+            .select('username')
+            .eq('username', payload.username)
+            .single()
+
+        if (existingUser) {
+            throw createError({
+                statusCode: 400,
+                statusMessage: 'Este nome de usuário já está em uso.'
+            })
+        }
+
+        // 4. Create Auth User
         console.log('[Register] Calling Supabase signUp...')
         const { data: authData, error: authError } = await client.auth.signUp({
             email: payload.email,
@@ -62,9 +76,21 @@ export default defineEventHandler(async (event) => {
 
         if (authError) {
             console.error('[Register] Supabase signUp error:', authError)
+
+            let statusMessage = authError.message || 'Erro ao criar conta'
+
+            // Translate common Supabase errors
+            if (statusMessage.includes('email rate limit exceeded')) {
+                statusMessage = 'Muitas tentativas de envio de email. Aguarde um momento e tente novamente.'
+            } else if (statusMessage.includes('User already registered')) {
+                statusMessage = 'Este email já está cadastrado.'
+            } else if (statusMessage.includes('Password should be')) {
+                statusMessage = 'A senha não atende aos requisitos mínimos.'
+            }
+
             throw createError({
                 statusCode: 400,
-                statusMessage: authError.message || 'Erro ao criar conta'
+                statusMessage: statusMessage
             })
         }
 
@@ -78,9 +104,31 @@ export default defineEventHandler(async (event) => {
 
         console.log('[Register] User created successfully:', authData.user.id)
 
-        // 4. Update Profile (Atomic Consistency)
-        // See comments in original file about RLS issues. 
-        // We assume trigger handles metadata mapping for now.
+        // 5. Create Profile (Explicitly)
+        // Use Service Role to bypass RLS (since user might not be logged in yet or policy restricts)
+        const serviceClient = await serverSupabaseServiceRole(event)
+
+        const { error: profileError } = await serviceClient
+            .from('profiles')
+            .insert({
+                id: authData.user.id,
+                username: payload.username,
+                full_name: payload.fullName,
+                city: payload.city,
+                city_ibge_id: payload.cityIbgeId
+            })
+
+        if (profileError) {
+            console.error('[Register] Failed to create profile:', profileError)
+            // Optional: Cleanup auth user if profile creation fails? 
+            // For MVP, we'll just throw.
+            throw createError({
+                statusCode: 500,
+                statusMessage: 'Conta criada, mas erro ao configurar perfil. Contate o suporte.'
+            })
+        }
+
+        console.log('[Register] Profile created successfully')
 
         return { success: true }
     } catch (e: any) {

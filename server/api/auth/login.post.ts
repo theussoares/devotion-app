@@ -56,5 +56,9 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    return { success: true, user: data.user, session: data.session }
+    return {
+        success: true,
+        user: data.user,
+        session: data.session
+    }
 })

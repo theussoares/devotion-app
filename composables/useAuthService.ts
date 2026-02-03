@@ -13,33 +13,11 @@ export const useAuthService = () => {
                 body: { email, password: pass, captchaToken }
             })
 
-            // IMPORTANT: If the server returns a session (it should if using signIn), 
-            // we must set it on the client to persist login state.
-            // However, our server route used `serverSupabaseClient` which might set cookies?
-            // Usually `signInWithPassword` on server side does NOT automatically set client cookies unless proxied perfectly.
-            // Simplest way: The server returns the user (and session if we ask for it).
-            // Actually, the server route currently returns { user }.
-            // We need the SESSION to log in on client.
-
-            // Let's assume we update the server route to return session first.
-            // But verify: if `serverSupabaseClient` shares cookies, maybe it worked?
-            // No, the response cookies from Supabase API need to be forwarded to Browser.
-            // The safest pattern is: Client receives Session JSON -> calls client.auth.setSession().
-
-            // Since I haven't updated the server to return session yet, I will update it in next step.
-            // For now, let's write the client code assuming it returns session.
-
-            // Wait, I need to fix the server api first to return session.
-            // But I can't do parallel edits easily.
-            // I'll assume server returns 'session'.
-
             if (res.session) {
-                console.log('Setting session on client...', res.session.user.id)
                 const { error } = await client.auth.setSession(res.session)
-                if (error) console.error('Error setting session:', error)
-                else console.log('Session set successfully.')
+                if (error) console.error('[Login] Error setting session:', error)
             } else {
-                console.warn('Login response missing session!', res)
+                console.warn('[Login] Response missing session')
             }
 
             // If successful, we update local user state if needed (Supabase watcher handles it).
