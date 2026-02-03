@@ -6,7 +6,7 @@
          <vue-turnstile 
             v-model="token"
             ref="turnstileInvisible"
-            :site-key="config.public.turnstile.siteKey"
+            :site-key="config.public.turnstileSiteKey"
             appearance="interaction-only" 
             @verify="onVerify"
             @error="onError"
@@ -19,7 +19,7 @@
          <vue-turnstile 
             v-model="token"
             ref="turnstileVisible"
-            :site-key="config.public.turnstile.siteKeyVisible" 
+            :site-key="config.public.turnstileSiteKey" 
             appearance="always"
             @verify="onVerify"
             @error="onErrorVisible"
@@ -34,6 +34,7 @@ import VueTurnstile from 'vue-turnstile'
 
 const emit = defineEmits(['verify', 'validating'])
 const config = useRuntimeConfig()
+
 const mode = ref<'invisible' | 'visible'>('invisible')
 const token = ref('')
 const turnstileInvisible = ref()

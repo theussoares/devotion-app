@@ -15,7 +15,8 @@ export default defineNuxtConfig({
     // Public keys (client-side)
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL,
-      turnstileSiteKey: '0x4AAAAAACW3FiHgLjhchW5JU8vXgXd3BoM'
+      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAACW3FiHgLjhchW5JU8vXgXd3BoM',
+      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAACW3FiHgLjhchW5JU8vXgXd3BoM'
     }
   },
   pwa: {
