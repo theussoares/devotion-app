@@ -67,12 +67,13 @@ const {
 // Fetch on open
 watch(() => props.isOpen, (val) => {
     if (val) {
+        console.log('PostCommentsModal open watched', props.postId)
         fetchComments()
         document.body.style.overflow = 'hidden'
     } else {
         document.body.style.overflow = ''
     }
-})
+}, { immediate: true })
 
 // Clean up
 import { onUnmounted } from 'vue'

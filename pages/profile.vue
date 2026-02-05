@@ -60,15 +60,41 @@
         @saved="handleBioSaved"
     />
 
-    <!-- Stats Pill (Streak) -->
-    <div class="flex gap-4 mb-8">
-        <div class="bg-gray-900 rounded-2xl p-4 flex-1 flex flex-col items-start border border-gray-800">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Sequência de devocionais</span>
-            <div class="text-3xl font-black text-white mt-1 flex items-center gap-2">
-                {{ profile.current_streak }} 
-                <span class="text-2xl animate-pulse">🔥</span>
+    <!-- User Lists Components -->
+    <UserListModal 
+        v-if="showFollowers"
+        :is-open="showFollowers"
+        title="Seguidores"
+        :fetch-function="fetchFollowers"
+        @close="showFollowers = false"
+    />
+
+    <UserListModal 
+        v-if="showFollowing"
+        :is-open="showFollowing"
+        title="Seguindo"
+        :fetch-function="fetchFollowing"
+        @close="showFollowing = false"
+    />
+
+    <div class="flex flex-col items-center mb-4">
+        <!-- Social Stats -->
+        <div class="flex items-center gap-8 mt-5 pb-2">
+            <div class="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity" @click="showFollowers = true">
+                <span class="font-bold text-lg text-white">{{ followersCount }}</span>
+                <span class="text-xs text-gray-500">seguidores</span>
             </div>
-            <span class="text-xs text-gray-500">dias seguidos</span>
+            <div class="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity" @click="showFollowing = true">
+                <span class="font-bold text-lg text-white">{{ followingCount }}</span>
+                <span class="text-xs text-gray-500">seguindo</span>
+            </div>
+             <div class="flex flex-col items-center">
+                <div class="flex items-center gap-1 font-bold text-lg text-amber-500">
+                    {{ profile.current_streak }} 
+                    <span class="text-xl animate-pulse">🔥</span>
+                </div>
+                <span class="text-xs text-gray-500">dias seguidos</span>
+            </div>
         </div>
     </div>
 
@@ -103,7 +129,12 @@
 
     <div v-if="activeTab === 'timeline'" class="flex flex-col gap-0 border-t border-gray-800">
          <div v-if="posts && posts.length > 0">
-             <PostCard v-for="post in posts" :key="post.id" :post="post" />
+             <PostCard 
+                 v-for="post in posts" 
+                 :key="post.id" 
+                 :post="post" 
+                 @refresh="removePostLocally(post.id)"
+             />
          </div>
          <div v-else class="text-center py-10 opacity-50 text-sm">
              Nenhuma publicação ainda.
@@ -191,8 +222,44 @@ function handleBioSaved(bio: string) {
 const showDayModal = ref(false)
 const selectedDayPosts = ref<Post[]>([])
 
+// Social Logic
+const { getFollowers, getFollowing } = useFollow()
+const showFollowers = ref(false)
+const showFollowing = ref(false)
+// These should ideally come from profile counts, for now let's mock or fetch count if needed.
+// IMPORTANT: Profile table doesn't have followers_count/following_count columns in schema provided!
+// We'll trust supabase to return counts or we might need to fetch length.
+// Given strict instructions "not break anything", I will fetch lengths on mount.
+const followersCount = ref(0)
+const followingCount = ref(0)
+const followersList = ref<any[]>([]) // Cache
+const followingList = ref<any[]>([]) // Cache
+
+async function fetchFollowers(search: string) {
+    if (!profile.value?.id) return []
+    return await getFollowers(profile.value.id, search)
+}
+
+async function fetchFollowing(search: string) {
+    if (!profile.value?.id) return []
+    return await getFollowing(profile.value.id, search)
+}
+
+async function loadSocialCounts() {
+    if (!profile.value?.id) return
+    const { count: fCount } = await client.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.value.id)
+    const { count: fingCount } = await client.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.value.id)
+    followersCount.value = fCount || 0
+    followingCount.value = fingCount || 0
+}
+
+
 // 1. Fetch Profile
 const { myProfile: profile } = useProfile()
+
+watch(profile, (newP) => {
+    if(newP) loadSocialCounts()
+}, { immediate: true })
 
 // 2. Fetch ALL Posts (for Timeline & Calendar)
 const { data: posts, error: postsError } = await useAsyncData('my_posts', async () => {
@@ -245,6 +312,12 @@ async function handleAvatarUploaded(url: string) {
     // Refresh profile to show new avatar
     if (profile.value) {
         profile.value.avatar_url = url
+    }
+}
+
+function removePostLocally(id: string) {
+    if (posts.value) {
+        posts.value = posts.value.filter(p => p.id !== id)
     }
 }
 </script>

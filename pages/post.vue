@@ -165,10 +165,39 @@ function triggerFileInput() {
 
 const moderating = ref(false)
 
-function handleFileChange(event: Event) {
+async function handleFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    file.value = target.files[0] || null
+    let selectedFile: File | undefined = target.files[0]
+    
+    if (!selectedFile) return
+
+    // Handle HEIC conversion
+    if (selectedFile.name.toLowerCase().endsWith('.heic') || selectedFile.type === 'image/heic') {
+      try {
+        moderating.value = true // Reuse moderating state to show activity
+        const heic2any = (await import('heic2any')).default
+        const result = await heic2any({
+          blob: selectedFile,
+          toType: 'image/jpeg',
+          quality: 0.8
+        })
+        
+        const blob = Array.isArray(result) ? result[0] : result
+        if (!blob) throw new Error('Erro na conversão da imagem')
+        
+        selectedFile = new File([blob], selectedFile.name.replace(/\.heic$/i, '.jpg'), {
+          type: 'image/jpeg'
+        })
+      } catch (e) {
+        console.error('HEIC conversion failed:', e)
+        errorMsg.value = 'Erro ao processar imagem HEIC. Tente outro formato.'
+        moderating.value = false
+        return
+      }
+    }
+
+    file.value = selectedFile
     if (file.value) {
       previewUrl.value = URL.createObjectURL(file.value)
       // Optional: Moderate on selection (better UX) or Submit

@@ -2,7 +2,7 @@
   <div class="hero min-h-screen bg-base-200">
     <div class="hero-content flex-col lg:flex-row-reverse">
       <div class="text-center lg:text-left">
-        <h1 class="text-5xl font-bold text-primary">Devocional</h1>
+        <h1 class="text-5xl font-bold text-primary">Devotion</h1>
         <p class="py-6">Conecte-se, compartilhe e mantenha sua constância espiritual.</p>
       </div>
       <div class="card shrink-0 w-full max-w-sm shadow-2xl bg-base-100">

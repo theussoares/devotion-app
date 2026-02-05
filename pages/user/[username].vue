@@ -24,17 +24,29 @@
         <p class="opacity-60">{{ profile.city }}</p>
       </div>
 
-      <div class="flex gap-4 items-center">
-        <div class="stats shadow bg-base-200">
-            <div class="stat place-items-center py-2 px-6">
-            <div class="stat-value text-primary text-2xl">🔥 {{ profile.current_streak }}</div>
-            <div class="stat-desc font-bold">dias</div>
+       <!-- Social Stats -->
+       <div class="flex items-center gap-6 pb-2">
+            <div class="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity" @click="showFollowers = true">
+                <span class="font-bold text-lg">{{ followersCount }}</span>
+                <span class="text-xs text-gray-500">seguidores</span>
+            </div>
+            <div class="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity" @click="showFollowing = true">
+                <span class="font-bold text-lg">{{ followingCount }}</span>
+                <span class="text-xs text-gray-500">seguindo</span>
+            </div>
+             <div class="flex flex-col items-center">
+                <div class="flex items-center gap-1 font-bold text-lg text-primary">
+                    {{ profile.current_streak }} 
+                    <span class="text-base animate-pulse">🔥</span>
+                </div>
+                <span class="text-xs text-gray-500">dias seguidos</span>
             </div>
         </div>
 
+      <div class="flex gap-4 items-center mt-2">
         <button 
           v-if="!isOwnProfile" 
-          class="btn" 
+          class="btn px-8" 
           :class="isFollowingState ? 'btn-outline' : 'btn-primary'"
           @click="handleFollow"
           :disabled="followLoading"
@@ -44,6 +56,23 @@
         <NuxtLink v-else to="/params" class="btn btn-ghost btn-sm">Editar</NuxtLink>
       </div>
     </div>
+
+    <!-- User Lists Components -->
+    <UserListModal 
+        v-if="showFollowers"
+        :is-open="showFollowers"
+        title="Seguidores"
+        :fetch-function="fetchFollowers"
+        @close="showFollowers = false"
+    />
+
+    <UserListModal 
+        v-if="showFollowing"
+        :is-open="showFollowing"
+        title="Seguindo"
+        :fetch-function="fetchFollowing"
+        @close="showFollowing = false"
+    />
 
     <!-- Tabs -->
     <div class="flex border-b border-gray-800 mb-6">
@@ -72,7 +101,12 @@
     <!-- Timeline View -->
     <div v-if="activeTab === 'timeline'" class="flex flex-col gap-0 border-t border-gray-800">
          <div v-if="posts && posts.length > 0">
-             <PostCard v-for="post in posts" :key="post.id" :post="post" />
+             <PostCard 
+                 v-for="post in posts" 
+                 :key="post.id" 
+                 :post="post" 
+                 @refresh="posts = posts?.filter(p => p.id !== post.id)"
+             />
          </div>
          <div v-else class="text-center py-10 opacity-50 text-sm">
              Nenhuma publicação ainda.
@@ -148,11 +182,48 @@ const isOwnProfile = computed(() => userId.value === profile.value?.id)
 const isFollowingState = ref(false)
 const followLoading = ref(false)
 
-// 3. Check Follow Status
+// 3. Check Follow Status & Load Stats
+const { getFollowers, getFollowing } = useFollow()
+const showFollowers = ref(false)
+const showFollowing = ref(false)
+const followersCount = ref(0)
+const followingCount = ref(0)
+
+async function fetchFollowers(search: string) {
+    if (!profile.value?.id) return []
+    return await getFollowers(profile.value.id, search)
+}
+
+async function fetchFollowing(search: string) {
+    if (!profile.value?.id) return []
+    return await getFollowing(profile.value.id, search)
+}
+
+async function loadSocialCounts() {
+    if (!profile.value?.id) return
+    const { count: fCount } = await client.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.value.id)
+    const { count: fingCount } = await client.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.value.id)
+    followersCount.value = fCount || 0
+    followingCount.value = fingCount || 0
+}
+
 onMounted(async () => {
-  if (profile.value && !isOwnProfile.value) {
-    isFollowingState.value = await isFollowing(profile.value.id)
+  if (profile.value) {
+      if (!isOwnProfile.value) {
+        isFollowingState.value = await isFollowing(profile.value.id)
+      }
+      loadSocialCounts()
   }
+})
+
+// Watch profile change (if navigating between users)
+watch(profile, (newP) => {
+    if (newP) {
+        loadSocialCounts()
+        if (!isOwnProfile.value) {
+             isFollowing(newP.id).then(res => isFollowingState.value = res)
+        }
+    }
 })
 
 // 4. Fetch All Posts (Timeline + Calendar)

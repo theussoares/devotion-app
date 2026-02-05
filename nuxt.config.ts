@@ -2,9 +2,19 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['@nuxtjs/supabase', '@nuxtjs/tailwindcss', '@nuxt/icon', '@vite-pwa/nuxt'],
+  modules: ['@nuxtjs/supabase', '@nuxtjs/tailwindcss', '@nuxt/icon', '@vite-pwa/nuxt', '@nuxt/image', '@pinia/nuxt'],
   supabase: {
     redirect: false, // We will handle redirects manually with middleware
+  },
+  image: {
+    provider: 'ipx',
+    domains: ['deapsdkjozyfoipbivod.supabase.co'],
+  },
+  routeRules: {
+    '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    '/images/**': { headers: { 'cache-control': 'public, max-age=86400' } }, // Local images
+    // Disable caching for authenticated routes that depend on user specific data
+    '/': { swr: false, cache: false },
   },
   css: ['~/assets/css/main.css'],
   runtimeConfig: {

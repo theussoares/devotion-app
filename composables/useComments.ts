@@ -23,6 +23,7 @@ export const useComments = (postId: string) => {
                 .order('created_at', { ascending: false })
 
             if (err) throw err
+            console.log('fetchComments debug:', { postId, data, count: data?.length })
             comments.value = data || []
         } catch (e: any) {
             console.error('Error fetching comments:', e)
