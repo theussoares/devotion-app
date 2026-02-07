@@ -26,9 +26,9 @@
     <div class="text-right px-1 mt-1">
         <span 
             class="text-[10px]" 
-            :class="text.length > 500 ? 'text-error' : 'text-gray-600'"
+            :class="text.length > 1000 ? 'text-error' : 'text-gray-600'"
         >
-            {{ text.length }}/500
+            {{ text.length }}/1000
         </span>
     </div>
   </div>
@@ -48,7 +48,7 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const isValid = computed(() => {
   const t = text.value.trim()
-  return t.length > 0 && t.length <= 500
+  return t.length > 0 && t.length <= 1000
 })
 
 function adjustHeight() {

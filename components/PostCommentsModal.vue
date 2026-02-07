@@ -9,7 +9,7 @@
 
     <!-- Sheet/Drawer -->
     <div 
-        class="fixed bottom-0 left-0 right-0 bg-base-100 z-[5001] rounded-t-2xl flex flex-col max-h-[85vh] transition-transform duration-300 transform"
+        class="fixed bottom-0 left-0 right-0 bg-base-100 z-[5001] rounded-t-2xl flex flex-col h-[85vh] transition-transform duration-300 transform"
         :class="isOpen ? 'translate-y-0' : 'translate-y-full'"
         style="box-shadow: 0 -4px 20px rgba(0,0,0,0.3);"
     >
@@ -25,8 +25,9 @@
         </div>
 
         <!-- Content -->
-        <div class="flex-1 overflow-hidden relative">
+        <div class="flex-1 relative overflow-hidden min-h-0 w-full">
             <CommentList 
+                class="w-full h-full"
                 :comments="comments"
                 :loading="loading"
                 :submitting="submitting"

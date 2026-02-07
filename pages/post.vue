@@ -92,16 +92,16 @@
           v-model="caption"
           placeholder="Escreva sua reflexão..."
           class="w-full bg-gray-900 border border-gray-800 rounded-2xl px-4 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 resize-none transition-all duration-200"
-          :class="{ 'border-red-500/50': caption.length > 500 }"
+          :class="{ 'border-red-500/50': caption.length > 1000 }"
           rows="6"
-          maxlength="500"
+          maxlength="1000"
         ></textarea>
         <div class="flex justify-between items-center mt-2 px-2">
           <span class="text-xs text-gray-500">
-            {{ caption.length }}/500 caracteres
+            {{ caption.length }}/1000 caracteres
           </span>
-          <span v-if="caption.length > 450" class="text-xs" :class="caption.length >= 500 ? 'text-red-500' : 'text-yellow-500'">
-            {{ caption.length >= 500 ? 'Limite atingido' : 'Quase no limite' }}
+          <span v-if="caption.length > 950" class="text-xs" :class="caption.length >= 1000 ? 'text-red-500' : 'text-yellow-500'">
+            {{ caption.length >= 1000 ? 'Limite atingido' : 'Quase no limite' }}
           </span>
         </div>
       </div>
@@ -150,8 +150,8 @@ const canPublish = computed(() => {
   // Caption must not be empty
   if (!caption.value.trim()) return false
   
-  // Caption must be <= 500 chars
-  if (caption.value.length > 500) return false
+  // Caption must be <= 1000 chars
+  if (caption.value.length > 1000) return false
   
   // Devotional requires photo
   if (type.value === 'devotional' && !file.value) return false
